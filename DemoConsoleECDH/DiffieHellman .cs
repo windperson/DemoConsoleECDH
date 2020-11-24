@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -8,63 +9,65 @@ namespace DemoConsoleECDH
 {
     public class DiffieHellman : IDisposable
     {
-        private readonly Aes aes = null;
-        private readonly ECDiffieHellmanCng diffieHellman = null;
+        private readonly Aes _aes = null;
+        private readonly ECDiffieHellman _diffieHellman = null;
 
         private readonly byte[] _publicKey;
-        public DiffieHellman()
+        public DiffieHellman(ECParameters? parameters = null)
         {
-            this.aes = new AesCryptoServiceProvider();
+            _aes = new AesCryptoServiceProvider();
 
-            this.diffieHellman = new ECDiffieHellmanCng
-            {
-                KeyDerivationFunction = ECDiffieHellmanKeyDerivationFunction.Hash,
-                HashAlgorithm = CngAlgorithm.Sha256
-            };
-
+            _diffieHellman = parameters.HasValue ? ECDiffieHellman.Create(parameters.Value) : ECDiffieHellman.Create();
+            
             // This is the public key we will send to the other party
-            this._publicKey = this.diffieHellman.PublicKey.ToByteArray();
+            _publicKey = _diffieHellman.PublicKey.ToByteArray();
         }
         public byte[] PublicKey => _publicKey;
 
-        public byte[] IV => aes.IV;
+        public byte[] IV => _aes.IV;
 
         public byte[] Encrypt(byte[] publicKey, string secretMessage)
         {
+            var ecdhKey = GetEcdhKey(publicKey);
+            var derivedKey = _diffieHellman.DeriveKeyMaterial(ecdhKey);
+
+            _aes.Key = derivedKey;
+
             byte[] encryptedMessage;
-            var key = CngKey.Import(publicKey, CngKeyBlobFormat.EccPublicBlob);
-            var derivedKey = this.diffieHellman.DeriveKeyMaterial(key); // "Common secret"
-
-            this.aes.Key = derivedKey;
-
             using (var cipherText = new MemoryStream())
             {
-                using (var encryptor = this.aes.CreateEncryptor())
+                using (var encryptor = _aes.CreateEncryptor())
                 {
                     using (var cryptoStream = new CryptoStream(cipherText, encryptor, CryptoStreamMode.Write))
                     {
-                        byte[] ciphertextMessage = Encoding.UTF8.GetBytes(secretMessage);
-                        cryptoStream.Write(ciphertextMessage, 0, ciphertextMessage.Length);
+                        byte[] buffer = Encoding.UTF8.GetBytes(secretMessage);
+                        cryptoStream.Write(buffer, 0, buffer.Length);
                     }
                 }
 
                 encryptedMessage = cipherText.ToArray();
             }
-
+             
             return encryptedMessage;
         }
+
+        private ECDiffieHellmanPublicKey GetEcdhKey(byte[] publicKey)
+        {
+            return ECDiffieHellmanCngPublicKey.FromByteArray(publicKey, CngKeyBlobFormat.EccPublicBlob);
+        }
+
         public string Decrypt(byte[] publicKey, byte[] encryptedMessage, byte[] iv)
         {
+            var ecdhKey = GetEcdhKey(publicKey);
+            var derivedKey = _diffieHellman.DeriveKeyMaterial(ecdhKey);
+            _aes.Key = derivedKey;
+
+            _aes.IV = iv;
+
             string decryptedMessage;
-            var key = CngKey.Import(publicKey, CngKeyBlobFormat.EccPublicBlob);
-            var derivedKey = this.diffieHellman.DeriveKeyMaterial(key);
-
-            this.aes.Key = derivedKey;
-            this.aes.IV = iv;
-
             using (var plainText = new MemoryStream())
             {
-                using (var decryptor = this.aes.CreateDecryptor())
+                using (var decryptor = this._aes.CreateDecryptor())
                 {
                     using (var cryptoStream = new CryptoStream(plainText, decryptor, CryptoStreamMode.Write))
                     {
@@ -88,9 +91,9 @@ namespace DemoConsoleECDH
         {
             if (disposing)
             {
-                aes?.Dispose();
+                _aes?.Dispose();
 
-                diffieHellman?.Dispose();
+                _diffieHellman?.Dispose();
             }
         }
     }
