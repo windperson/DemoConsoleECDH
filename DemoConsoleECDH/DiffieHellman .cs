@@ -11,8 +11,9 @@ namespace DemoConsoleECDH
     {
         private readonly Aes _aes = null;
         private readonly ECDiffieHellman _diffieHellman = null;
+        private ECDiffieHellmanPublicKey _publicKey = null;
 
-        private readonly byte[] _publicKey;
+
         public DiffieHellman(ECParameters? parameters = null)
         {
             _aes = new AesCryptoServiceProvider();
@@ -20,9 +21,9 @@ namespace DemoConsoleECDH
             _diffieHellman = parameters.HasValue ? ECDiffieHellman.Create(parameters.Value) : ECDiffieHellman.Create();
             
             // This is the public key we will send to the other party
-            _publicKey = _diffieHellman.PublicKey.ToByteArray();
+            _publicKey = _diffieHellman.PublicKey;
         }
-        public byte[] PublicKey => _publicKey;
+        public byte[] PublicKey => _publicKey.ToByteArray();
 
         public byte[] IV => _aes.IV;
 
