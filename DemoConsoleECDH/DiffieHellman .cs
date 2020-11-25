@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -24,7 +22,8 @@ namespace DemoConsoleECDH
             _publicKey = _diffieHellman.PublicKey;
         }
 
-        public byte[] PublicKey {
+        public byte[] PublicKey
+        {
             get
             {
                 try
@@ -36,16 +35,23 @@ namespace DemoConsoleECDH
                     return _diffieHellman.DeriveKeyFromHash(_publicKey, HashAlgorithmName.SHA256);
                 }
             }
-    }
+        }
 
-    public byte[] IV => _aes.IV;
+        public byte[] IV => _aes.IV;
 
         public byte[] Encrypt(byte[] publicKey, string secretMessage)
         {
-            var ecdhKey = GetEcdhKey(publicKey);
-            var derivedKey = _diffieHellman.DeriveKeyMaterial(ecdhKey);
+            try
+            {
+                var ecdhKey = GetEcdhKey(publicKey);
+                var derivedKey = _diffieHellman.DeriveKeyMaterial(ecdhKey);
 
-            _aes.Key = derivedKey;
+                _aes.Key = derivedKey;
+            }
+            catch (PlatformNotSupportedException)
+            {
+                _aes.Key = publicKey;
+            }
 
             byte[] encryptedMessage;
             using (var cipherText = new MemoryStream())
@@ -61,20 +67,28 @@ namespace DemoConsoleECDH
 
                 encryptedMessage = cipherText.ToArray();
             }
-             
+
             return encryptedMessage;
         }
 
-        private ECDiffieHellmanPublicKey GetEcdhKey(byte[] publicKey)
+        private static ECDiffieHellmanPublicKey GetEcdhKey(byte[] publicKey)
         {
             return ECDiffieHellmanCngPublicKey.FromByteArray(publicKey, CngKeyBlobFormat.EccPublicBlob);
         }
 
         public string Decrypt(byte[] publicKey, byte[] encryptedMessage, byte[] iv)
         {
-            var ecdhKey = GetEcdhKey(publicKey);
-            var derivedKey = _diffieHellman.DeriveKeyMaterial(ecdhKey);
-            _aes.Key = derivedKey;
+            try
+            {
+                var ecdhKey = GetEcdhKey(publicKey);
+                var derivedKey = _diffieHellman.DeriveKeyMaterial(ecdhKey);
+
+                _aes.Key = derivedKey;
+            }
+            catch (PlatformNotSupportedException)
+            {
+                _aes.Key = publicKey;
+            }
 
             _aes.IV = iv;
 
