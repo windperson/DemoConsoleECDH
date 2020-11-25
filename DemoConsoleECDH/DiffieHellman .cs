@@ -19,13 +19,26 @@ namespace DemoConsoleECDH
             _aes = new AesCryptoServiceProvider();
 
             _diffieHellman = parameters.HasValue ? ECDiffieHellman.Create(parameters.Value) : ECDiffieHellman.Create();
-            
+
             // This is the public key we will send to the other party
             _publicKey = _diffieHellman.PublicKey;
         }
-        public byte[] PublicKey => _publicKey.ToByteArray();
 
-        public byte[] IV => _aes.IV;
+        public byte[] PublicKey {
+            get
+            {
+                try
+                {
+                    return _publicKey.ToByteArray();
+                }
+                catch (PlatformNotSupportedException)
+                {
+                    return _diffieHellman.DeriveKeyFromHash(_publicKey, HashAlgorithmName.SHA256);
+                }
+            }
+    }
+
+    public byte[] IV => _aes.IV;
 
         public byte[] Encrypt(byte[] publicKey, string secretMessage)
         {
