@@ -32,7 +32,8 @@ namespace DemoConsoleECDH
                 }
                 catch (PlatformNotSupportedException)
                 {
-                    return _diffieHellman.DeriveKeyFromHash(_publicKey, HashAlgorithmName.SHA256);
+                    var sslEcdh = new ECDiffieHellmanOpenSsl();
+                    return sslEcdh.DeriveKeyMaterial(_publicKey);
                 }
             }
         }
@@ -73,6 +74,7 @@ namespace DemoConsoleECDH
 
         private static ECDiffieHellmanPublicKey GetEcdhKey(byte[] publicKey)
         {
+            //see: https://stackoverflow.com/a/22239489/1075882
             return ECDiffieHellmanCngPublicKey.FromByteArray(publicKey, CngKeyBlobFormat.EccPublicBlob);
         }
 
