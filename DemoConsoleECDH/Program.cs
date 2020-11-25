@@ -18,7 +18,7 @@ namespace DemoConsoleECDH
                 "2ec4d77a79719da37f099ff3ab8caf150ab5979b80963bd21ad64bd42f4c28aa75fe19d01937a5e5529066474aa4100d169aa00f3ff9884bc74f6db39211dd74",
                 "79fc0797c5ad4d81c55e7c6983d1e05499ba4fd5276dea2003c090eb54915a1e");
 
-            using (var bob = new DiffieHellman(ecParameters_Bob))
+            using (var bob = new DiffieHellman())
             {
                 using (var alice = new DiffieHellman(ecParameters_Alice))
                 {

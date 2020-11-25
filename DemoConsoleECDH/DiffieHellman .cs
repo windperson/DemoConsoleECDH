@@ -16,7 +16,7 @@ namespace DemoConsoleECDH
         {
             _aes = new AesCryptoServiceProvider();
 
-            _diffieHellman = parameters.HasValue ? ECDiffieHellman.Create(parameters.Value) : ECDiffieHellman.Create();
+            _diffieHellman = parameters.HasValue ? ECDiffieHellman.Create(parameters.Value) : ECDiffieHellman.Create(ECCurve.NamedCurves.nistP256);
 
             // This is the public key we will send to the other party
             _publicKey = _diffieHellman.PublicKey;
@@ -28,12 +28,19 @@ namespace DemoConsoleECDH
             {
                 try
                 {
-                    return _publicKey.ToByteArray();
+                    if (OperatingSystem.IsWindows())
+                    {
+                        return _publicKey.ToByteArray();
+                    }
+                    else
+                    {
+                        var sslEcdh = new ECDiffieHellmanOpenSsl(ECCurve.NamedCurves.nistP256);
+                        return sslEcdh.DeriveKeyMaterial(_publicKey);
+                    }
                 }
                 catch (PlatformNotSupportedException)
                 {
-                    var sslEcdh = new ECDiffieHellmanOpenSsl();
-                    return sslEcdh.DeriveKeyMaterial(_publicKey);
+                    return _diffieHellman.DeriveKeyMaterial(_publicKey);
                 }
             }
         }
